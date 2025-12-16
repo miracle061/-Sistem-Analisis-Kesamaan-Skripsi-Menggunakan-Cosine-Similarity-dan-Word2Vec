@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plagiarism Detector</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+      padding: 40px 20px;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+
+    .eval-btn {
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      color: white;
+      border: 2px solid white;
+      padding: 12px 25px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .eval-btn:hover {
+      background: white;
+      color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+    }
+
+    .upload-section {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      margin-bottom: 40px;
+    }
+
+    .upload-area {
+      border: 3px dashed #667eea;
+      border-radius: 15px;
+      padding: 60px 40px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    .upload-area:hover {
+      border-color: #764ba2;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+
+    .upload-area.dragover {
+      background: #f0f4ff;
+      border-color: #764ba2;
+    }
+
+    .upload-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+      opacity: 0.7;
+    }
+
+    .upload-text {
+      font-size: 1.3em;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .upload-subtext {
+      color: #666;
+      font-size: 0.95em;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 1.1em;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      margin-top: 20px;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .results {
+      display: none;
+    }
+
+    .results-header {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .results-header h2 {
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .results-header p {
+      color: #666;
+      font-size: 0.95em;
+    }
+
+    .match-card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .match-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    .match-info {
+      flex: 1;
+    }
+
+    .match-title {
+      font-size: 1.3em;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .similarity-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.95em;
+      margin-top: 5px;
+    }
+
+    .similarity-high {
+      background: #fee;
+      color: #c33;
+    }
+
+    .similarity-medium {
+      background: #ffeaa7;
+      color: #d63031;
+    }
+
+    .similarity-low {
+      background: #dfe6e9;
+      color: #636e72;
+    }
+
+    .view-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .view-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .no-matches {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .no-matches-icon {
+      font-size: 4em;
+      margin-bottom: 15px;
+      opacity: 0.5;
+    }
+
+    .selected-file {
+      background: white;
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin-top: 20px;
+      display: none;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+
+    .file-icon {
+      font-size: 2em;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .file-size {
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .remove-file {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+
+    @media (max-width: 768px) {
+      .eval-btn {
+        position: static;
+        margin-top: 20px;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="evaluation.html" class="eval-btn">📊 Evaluation</a>
+      <h1>📄 Plagiarism Detector</h1>
+      <p>Upload a PDF to check for potential matches in our database</p>
+    </div>
+
+    <div class="upload-section">
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📤</div>
+        <div class="upload-text">Click to upload or drag and drop</div>
+        <div class="upload-subtext">PDF files only</div>
+      </div>
+      <input type="file" id="pdfInput" accept=".pdf" />
+      
+      <div class="selected-file" id="selectedFile">
+        <div class="file-icon">📄</div>
+        <div class="file-info">
+          <div class="file-name" id="fileName"></div>
+          <div class="file-size" id="fileSize"></div>
+        </div>
+        <button class="remove-file" onclick="removeFile()">✕ Remove</button>
+      </div>
+
+      <div style="text-align: center;">
+        <button class="btn" id="uploadBtn" onclick="uploadPDF()" disabled>
+          Analyze Document
+        </button>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Analyzing your document...</p>
+      </div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="results-header">
+        <h2>Analysis Results</h2>
+        <p id="resultsSubtitle"></p>
+      </div>
+      <div id="matchesContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    const backendURL = "http://127.0.0.1:5000";
+    let selectedFile = null;
+
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('pdfInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    // Click to upload
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].type === 'application/pdf') {
+        fileInput.files = files;
+        handleFileSelect(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    function handleFileSelect(file) {
+      selectedFile = file;
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileSize').textContent = formatFileSize(file.size);
+      document.getElementById('selectedFile').style.display = 'flex';
+      uploadBtn.disabled = false;
+    }
+
+    function removeFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      document.getElementById('selectedFile').style.display = 'none';
+      uploadBtn.disabled = true;
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    async function uploadPDF() {
+      if (!selectedFile) return alert("Please select a PDF file");
+
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+      uploadBtn.disabled = true;
+
+      try {
+        let fd = new FormData();
+        fd.append("file", selectedFile);
+
+        const up = await fetch(`${backendURL}/upload`, { method: "POST", body: fd });
+        const upData = await up.json();
+        
+        if (!upData.filename) {
+          alert("Upload failed");
+          return;
+        }
+
+        const sim = await fetch(`${backendURL}/similar/${upData.filename}`);
+        const simData = await sim.json();
+
+        displayResults(upData.filename, simData);
+      } catch (error) {
+        alert("Error: " + error.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+        uploadBtn.disabled = false;
+      }
+    }
+
+    function displayResults(filename, matches) {
+      const results = document.getElementById('results');
+      const matchesContainer = document.getElementById('matchesContainer');
+      const subtitle = document.getElementById('resultsSubtitle');
+
+      results.style.display = 'block';
+      matchesContainer.innerHTML = '';
+
+      if (matches.length === 0) {
+        matchesContainer.innerHTML = `
+          <div class="no-matches">
+            <div class="no-matches-icon">✅</div>
+            <h3>No matches found</h3>
+            <p style="color: #666; margin-top: 10px;">Your document appears to be original!</p>
+          </div>
+        `;
+        subtitle.textContent = 'No similar documents detected';
+        return;
+      }
+
+      subtitle.textContent = `Found ${matches.length} potential match${matches.length > 1 ? 'es' : ''}`;
+
+      matches.forEach(item => {
+        const similarity = item.similarity * 100;
+        let badgeClass = 'similarity-low';
+        if (similarity > 70) badgeClass = 'similarity-high';
+        else if (similarity > 40) badgeClass = 'similarity-medium';
+
+        const card = document.createElement('div');
+        card.className = 'match-card';
+        card.innerHTML = `
+          <div class="match-info">
+            <div class="match-title">${item.file_name}</div>
+            <span class="similarity-badge ${badgeClass}">
+              ${similarity.toFixed(1)}% similarity
+            </span>
+          </div>
+          <button class="view-btn" onclick="goToDetail('${filename}', '${item.file_name}')">
+            View Details →
+          </button>
+        `;
+        matchesContainer.appendChild(card);
+      });
+    }
+
+    function goToDetail(userfile, dbfile) {
+      window.location.href = `detail.html?user=${encodeURIComponent(userfile)}&db=${encodeURIComponent(dbfile)}`;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Evaluation - Plagiarism Detector</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+      padding: 40px 20px;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header p {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 40px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      color: white;
+      border: 2px solid white;
+      padding: 12px 25px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-btn:hover {
+      background: white;
+      color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      color: white;
+      border: 2px solid white;
+      padding: 12px 25px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .tab-btn:hover, .tab-btn.active {
+      background: white;
+      color: #667eea;
+      transform: translateY(-2px);
+    }
+
+    .section {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      margin-bottom: 40px;
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 2em;
+      color: #333;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .metric-card {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .metric-label {
+      font-size: 0.9em;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .metric-value {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .chart-container {
+      position: relative;
+      margin: 30px auto;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 15px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 400px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .refresh-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      margin-bottom: 20px;
+    }
+
+    .refresh-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    }
+
+    .confusion-matrix {
+      display: grid;
+      grid-template-columns: auto repeat(2, 1fr);
+      gap: 2px;
+      max-width: 500px;
+      margin: 30px auto;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .cm-cell {
+      background: white;
+      padding: 20px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .cm-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .cm-value {
+      font-size: 2em;
+      color: #667eea;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    tr:hover {
+      background: #f8f9ff;
+    }
+
+    @media (max-width: 768px) {
+      .back-btn {
+        position: static;
+        margin-bottom: 20px;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .chart-wrapper {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="index.html" class="back-btn">← Back to Detector</a>
+      <h1>📊 System Evaluation</h1>
+      <p>Performance metrics and analysis of the plagiarism detection system</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('confusion')">Confusion Matrix</button>
+      <button class="tab-btn" onclick="switchTab('roc')">ROC Curve</button>
+      <button class="tab-btn" onclick="switchTab('ranking')">Ranking Metrics</button>
+      <button class="tab-btn" onclick="switchTab('baseline')">Baseline Comparison</button>
+      <button class="tab-btn" onclick="switchTab('stats')">System Stats</button>
+    </div>
+
+    <!-- Confusion Matrix Section -->
+    <div id="confusion" class="section active">
+      <div class="section-title">
+        <span>📈</span> Confusion Matrix & Classification Metrics
+      </div>
+      <button class="refresh-btn" onclick="loadConfusionMatrix()">🔄 Refresh Data</button>
+      
+      <div id="confusionLoading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Loading metrics...</p>
+      </div>
+
+      <div id="confusionContent">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Accuracy</div>
+            <div class="metric-value" id="accuracy">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Precision</div>
+            <div class="metric-value" id="precision">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Recall</div>
+            <div class="metric-value" id="recall">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">F1-Score</div>
+            <div class="metric-value" id="f1score">-</div>
+          </div>
+        </div>
+
+        <h3 style="text-align: center; margin: 30px 0 20px; color: #333;">Confusion Matrix</h3>
+        <div class="confusion-matrix" id="confusionMatrix">
+          <div class="cm-cell"></div>
+          <div class="cm-cell cm-header">Predicted: No</div>
+          <div class="cm-cell cm-header">Predicted: Yes</div>
+          <div class="cm-cell cm-header">Actual: No</div>
+          <div class="cm-cell"><div class="cm-value" id="tn">0</div><div>True Negative</div></div>
+          <div class="cm-cell"><div class="cm-value" id="fp">0</div><div>False Positive</div></div>
+          <div class="cm-cell cm-header">Actual: Yes</div>
+          <div class="cm-cell"><div class="cm-value" id="fn">0</div><div>False Negative</div></div>
+          <div class="cm-cell"><div class="cm-value" id="tp">0</div><div>True Positive</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROC Curve Section -->
+    <div id="roc" class="section">
+      <div class="section-title">
+        <span>📉</span> ROC Curve & AUC
+      </div>
+      <button class="refresh-btn" onclick="loadROC()">🔄 Refresh Data</button>
+
+      <div id="rocLoading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Loading ROC curve...</p>
+      </div>
+
+      <div id="rocContent">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">AUC Score</div>
+            <div class="metric-value" id="aucScore">-</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <div class="chart-wrapper">
+            <canvas id="rocChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ranking Metrics Section -->
+    <div id="ranking" class="section">
+      <div class="section-title">
+        <span>🎯</span> Ranking Metrics (MAP & MRR)
+      </div>
+      <button class="refresh-btn" onclick="loadRanking()">🔄 Refresh Data</button>
+
+      <div id="rankingLoading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Loading ranking metrics...</p>
+      </div>
+
+      <div id="rankingContent">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">MAP (Mean Average Precision)</div>
+            <div class="metric-value" id="mapScore">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">MRR (Mean Reciprocal Rank)</div>
+            <div class="metric-value" id="mrrScore">-</div>
+          </div>
+        </div>
+
+        <h3 style="margin: 30px 0 20px; color: #333;">Per-Query Analysis</h3>
+        <div class="table-container">
+          <table id="rankingTable">
+            <thead>
+              <tr>
+                <th>Query</th>
+                <th>Average Precision</th>
+                <th>Reciprocal Rank</th>
+                <th>Relevant Found</th>
+              </tr>
+            </thead>
+            <tbody id="rankingTableBody">
+              <tr>
+                <td colspan="4" style="text-align: center; color: #999;">No data available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Baseline Comparison Section -->
+    <div id="baseline" class="section">
+      <div class="section-title">
+        <span>⚖️</span> Baseline Comparison
+      </div>
+      <button class="refresh-btn" onclick="loadBaseline()">🔄 Refresh Data</button>
+
+      <div id="baselineLoading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Loading comparison...</p>
+      </div>
+
+      <div id="baselineContent">
+        <div class="chart-container">
+          <div class="chart-wrapper">
+            <canvas id="baselineChart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-container" style="margin-top: 30px;">
+          <table id="baselineTable">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Accuracy</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1-Score</th>
+              </tr>
+            </thead>
+            <tbody id="baselineTableBody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #999;">No data available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Stats Section -->
+    <div id="stats" class="section">
+      <div class="section-title">
+        <span>💾</span> System Statistics
+      </div>
+      <button class="refresh-btn" onclick="loadStats()">🔄 Refresh Data</button>
+
+      <div id="statsLoading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p style="color: #667eea; font-weight: 600;">Loading statistics...</p>
+      </div>
+
+      <div id="statsContent">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Total Documents</div>
+            <div class="metric-value" id="totalDocs">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Database Size</div>
+            <div class="metric-value" id="dbSize">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Total Queries</div>
+            <div class="metric-value" id="totalQueries">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Avg Query Time</div>
+            <div class="metric-value" id="avgQueryTime">-</div>
+          </div>
+        </div>
+
+        <div class="table-container" style="margin-top: 30px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="statsTableBody">
+              <tr>
+                <td colspan="3" style="text-align: center; color: #999;">No data available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const evaluationPayload = {
+  test_cases: [
+    {
+      file: "SOFT_FILE_SKRIPSI.pdf",
+      plagiarized_from: "5302413052_Optimized.pdf",
+      is_plagiarism: true
+    }
+  ],
+  sentence_threshold: 0.8,
+  min_match_percentage: 0.1
+};
+
+    const backendURL = "http://127.0.0.1:5000";
+    let rocChart = null;
+    let baselineChart = null;
+
+    function switchTab(tabName) {
+      // Update buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Update sections
+      document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+
+      // Load data if needed
+      switch(tabName) {
+        case 'confusion': loadConfusionMatrix(); break;
+        case 'roc': loadROC(); break;
+        case 'ranking': loadRanking(); break;
+        case 'baseline': loadBaseline(); break;
+        case 'stats': loadStats(); break;
+      }
+    }
+
+    async function loadConfusionMatrix() {
+      const loading = document.getElementById('confusionLoading');
+      const content = document.getElementById('confusionContent');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      try {
+        const response = await fetch(`${backendURL}/evaluate`, {
+  method: 'POST',
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(evaluationPayload)
+});
+
+        const data = await response.json();
+
+        document.getElementById('accuracy').textContent = (data.accuracy * 100).toFixed(1) + '%';
+        document.getElementById('precision').textContent = (data.precision * 100).toFixed(1) + '%';
+        document.getElementById('recall').textContent = (data.recall * 100).toFixed(1) + '%';
+        document.getElementById('f1score').textContent = (data.f1_score * 100).toFixed(1) + '%';
+
+        document.getElementById('tp').textContent = data.confusion_matrix.tp || 0;
+        document.getElementById('tn').textContent = data.confusion_matrix.tn || 0;
+        document.getElementById('fp').textContent = data.confusion_matrix.fp || 0;
+        document.getElementById('fn').textContent = data.confusion_matrix.fn || 0;
+
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading confusion matrix:', error);
+        alert('Failed to load confusion matrix data');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    async function loadROC() {
+      const loading = document.getElementById('rocLoading');
+      const content = document.getElementById('rocContent');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      try {
+        const response = await fetch(`${backendURL}/evaluate/roc`, {
+  method: 'POST',
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(evaluationPayload)
+});
+
+        const data = await response.json();
+
+        document.getElementById('aucScore').textContent = data.auc.toFixed(3);
+
+        // Draw ROC curve
+        if (rocChart) rocChart.destroy();
+        
+        const ctx = document.getElementById('rocChart').getContext('2d');
+        rocChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            datasets: [{
+              label: 'ROC Curve',
+              data: data.fpr.map((x, i) => ({x: x, y: data.tpr[i]})),
+              borderColor: '#667eea',
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              borderWidth: 3,
+              pointRadius: 2,
+              fill: true
+            }, {
+              label: 'Random Classifier',
+              data: [{x: 0, y: 0}, {x: 1, y: 1}],
+              borderColor: '#ccc',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: `ROC Curve (AUC = ${data.auc.toFixed(3)})`,
+                font: { size: 16, weight: 'bold' }
+              },
+              legend: { position: 'bottom' }
+            },
+            scales: {
+              x: { 
+                title: { display: true, text: 'False Positive Rate' },
+                min: 0, max: 1
+              },
+              y: { 
+                title: { display: true, text: 'True Positive Rate' },
+                min: 0, max: 1
+              }
+            }
+          }
+        });
+
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading ROC:', error);
+        alert('Failed to load ROC curve data');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    async function loadRanking() {
+      const loading = document.getElementById('rankingLoading');
+      const content = document.getElementById('rankingContent');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      try {
+        const response = await fetch(`${backendURL}/evaluate/ranking`, {
+  method: 'POST',
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(evaluationPayload)
+});
+
+        const data = await response.json();
+
+        document.getElementById('mapScore').textContent = data.map.toFixed(3);
+        document.getElementById('mrrScore').textContent = data.mrr.toFixed(3);
+
+        // Populate table
+        const tbody = document.getElementById('rankingTableBody');
+        tbody.innerHTML = '';
+        
+        if (data.per_query && data.per_query.length > 0) {
+          data.per_query.forEach(query => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+              <td>${query.query_name || 'N/A'}</td>
+              <td>${query.average_precision.toFixed(3)}</td>
+              <td>${query.reciprocal_rank.toFixed(3)}</td>
+              <td>${query.relevant_found}</td>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No query data available</td></tr>';
+        }
+
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading ranking metrics:', error);
+        alert('Failed to load ranking metrics');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    async function loadBaseline() {
+      const loading = document.getElementById('baselineLoading');
+      const content = document.getElementById('baselineContent');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      try {
+        const response = await fetch(`${backendURL}/baseline/comparison`, {
+  method: 'POST',
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(evaluationPayload)
+});
+
+        const data = await response.json();
+
+        // Populate table
+        const tbody = document.getElementById('baselineTableBody');
+        tbody.innerHTML = '';
+        
+        if (data.comparisons && data.comparisons.length > 0) {
+          data.comparisons.forEach(item => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+              <td><strong>${item.method}</strong></td>
+              <td>${(item.accuracy * 100).toFixed(1)}%</td>
+              <td>${(item.precision * 100).toFixed(1)}%</td>
+              <td>${(item.recall * 100).toFixed(1)}%</td>
+              <td>${(item.f1_score * 100).toFixed(1)}%</td>
+            `;
+          });
+
+          // Draw comparison chart
+          if (baselineChart) baselineChart.destroy();
+          
+          const ctx = document.getElementById('baselineChart').getContext('2d');
+          baselineChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: data.comparisons.map(d => d.method),
+              datasets: [{
+                label: 'Accuracy',
+                data: data.comparisons.map(d => d.accuracy * 100),
+                backgroundColor: 'rgba(102, 126, 234, 0.8)'
+              }, {
+                label: 'Precision',
+                data: data.comparisons.map(d => d.precision * 100),
+                backgroundColor: 'rgba(118, 75, 162, 0.8)'
+              }, {
+                label: 'Recall',
+                data: data.comparisons.map(d => d.recall * 100),
+                backgroundColor: 'rgba(255, 107, 107, 0.8)'
+              }, {
+                label: 'F1-Score',
+                data: data.comparisons.map(d => d.f1_score * 100),
+                backgroundColor: 'rgba(72, 219, 251, 0.8)'
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                title: {
+                  display: true,
+                  text: 'Performance Comparison Across Methods',
+                  font: { size: 16, weight: 'bold' }
+                },
+                legend: { position: 'bottom' }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  title: { display: true, text: 'Percentage (%)' }
+                }
+              }
+            }
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No comparison data available</td></tr>';
+        }
+
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading baseline comparison:', error);
+        alert('Failed to load baseline comparison');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    async function loadStats() {
+      const loading = document.getElementById('statsLoading');
+      const content = document.getElementById('statsContent');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+
+      try {
+        const response = await fetch(`${backendURL}/stats`);
+        const data = await response.json();
+
+        document.getElementById('totalDocs').textContent = data.total_documents || 0;
+        document.getElementById('dbSize').textContent = data.database_size || 'N/A';
+        document.getElementById('totalQueries').textContent = data.total_queries || 0;
+        document.getElementById('avgQueryTime').textContent = data.avg_query_time || 'N/A';
+
+        // Populate detailed stats table
+        const tbody = document.getElementById('statsTableBody');
+        tbody.innerHTML = '';
+        
+        if (data.detailed_stats) {
+          Object.entries(data.detailed_stats).forEach(([key, value]) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+              <td><strong>${key.replace(/_/g, ' ').toUpperCase()}</strong></td>
+              <td>${value.value}</td>
+              <td>${value.description || 'N/A'}</td>
+            `;
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">No detailed statistics available</td></tr>';
+        }
+
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        alert('Failed to load system statistics');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    // Load initial data
+    window.addEventListener('DOMContentLoaded', () => {
+      loadConfusionMatrix();
+    });
+      console.log("EVALUATION HTML FILE LOADED — NEW VERSION");
+  </script>
+</body>
+</html>
