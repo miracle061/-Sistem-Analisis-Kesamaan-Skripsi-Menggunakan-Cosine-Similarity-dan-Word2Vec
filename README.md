@@ -1,135 +1,66 @@
-📘 Sistem Analisis Kesamaan Skripsi
-Menggunakan Word2Vec, BERT, TF‑IDF Weighting, dan Cosine Similarity
-Proyek ini merupakan sistem pendeteksi kemiripan dokumen skripsi berbasis kombinasi embedding Word2Vec + BERT, dilengkapi dengan TF‑IDF weighting, sentence filtering, dan Jaccard lexical overlap untuk meningkatkan akurasi deteksi plagiarisme.
+# Plagiarism Detection System
 
-Sistem terdiri dari dua bagian utama:
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![Flask](https://img.shields.io/badge/Flask-2.3-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-✅ Backend (Flask API) — melakukan ekstraksi PDF, preprocessing, embedding, dan perhitungan similarity
+A plagiarism detection system that analyzes PDF documents using a combination of **Word2Vec**, **BERT**, and **TF-IDF**.  
+Supports **document-level** and **sentence-level** similarity with confidence scoring.
 
-✅ Frontend (HTML/JS) — antarmuka untuk upload PDF, melihat hasil similarity, dan detail kalimat yang mirip
+---
 
-🚀 Fitur Utama
-🔍 1. Deteksi Kemiripan Dokumen
-Menggunakan cosine similarity pada vektor gabungan:
+## Features
 
-Word2Vec (100D)
+- Upload PDF documents for analysis
+- Preprocessing: tokenization, stemming, stopword removal
+- Vectorization: Word2Vec + BERT + TF-IDF weighted
+- Document similarity ranking using cosine similarity
+- Detailed sentence-level comparison with Jaccard similarity and confidence score
+- REST API backend built with Flask
+- Supports previewing uploaded PDFs
+- Filters out references, acknowledgements, and non-content sections
 
-BERT SentenceTransformer (384D)
+---
 
-TF‑IDF weighted sentence embeddings
+## System Flow
 
-Normalisasi vektor untuk stabilitas skor
+The workflow of the system:
 
-🧠 2. Preprocessing Cerdas
-Filtering section (skip: daftar pustaka, abstrak, lampiran)
-
-Filtering kalimat:
-
-terlalu pendek/panjang
-
-mengandung URL, DOI, email
-
-caption tabel/gambar
-
-pola referensi
-
-Stemming (Sastrawi)
-
-Stopwords: Indonesia + Inggris + custom domain
-
-📄 3. Detail Kalimat Mirip
-Perbandingan kalimat per halaman
-
-Cosine similarity + Jaccard overlap
-
-Confidence score:
-
-Code
-0.6 * cosine + 0.4 * jaccard
-🗂️ 4. Vector Database
-Precomputed embeddings disimpan dalam .npz
-
-Word2Vec model disimpan dalam .model
-
-Tidak di‑upload ke GitHub (karena >100MB)
-
-🏗️ Arsitektur Sistem
-Code
-PDF → Extract Text → Preprocess → Sentence Filtering
-      ↓
-  Word2Vec + BERT Embedding
-      ↓
-  TF‑IDF Weighting
-      ↓
-  Combined Vector (Normalized)
-      ↓
-  Cosine Similarity → Ranking → Detail Matching
-📦 Struktur Folder
-Code
-pdf_similarity_project/
-│
-├── backend/
-│   ├── app.py                # Flask API utama
-│   ├── model/                # Word2Vec + vector DB (ignored in Git)
-│   ├── DATASET STKI/         # Dataset PDF skripsi
-│   ├── uploads/              # PDF user upload
-│   └── evaluation/           # Evaluasi & test cases
-│
-├── frontend/
-│   ├── index.html            # Halaman upload
-│   ├── detail.html           # Halaman detail similarity
-│   ├── script.js
-│   └── style.css
-│
-└── README.md
-🛠️ Cara Menjalankan Backend
-1. Install dependencies
-Code
-pip install -r requirements.txt
-2. Jalankan server Flask
-Code
-python backend/app.py
-Server akan berjalan di:
-
-Code
-http://127.0.0.1:5000
-🖥️ Cara Menggunakan Frontend
-Buka frontend/index.html di browser
-
-Upload file PDF
-
-Sistem akan menampilkan:
-
-daftar dokumen mirip
-
-skor similarity
-
-Klik salah satu dokumen untuk melihat detail kalimat mirip
-
-📊 Threshold & Parameter Penting
-Parameter	Nilai	Fungsi
-DOCUMENT_SIMILARITY_THRESHOLD	0.75	Filter dokumen mirip
-SENTENCE_SIMILARITY_THRESHOLD	0.80	Filter kalimat mirip
-MIN_JACCARD_OVERLAP	0.15	Minimum lexical overlap
-MIN_SENTENCE_WORDS	8	Filter kalimat terlalu pendek
-⚠️ Catatan Penting
-File besar seperti:
-
-vector_data_combined.npz
-
-word2vec_sentence.model
-
-dataset PDF skripsi tidak boleh di‑upload ke GitHub karena melebihi batas 100MB.
-
-Pastikan .gitignore sudah mengabaikan folder:
-
-Code
-backend/model/
-backend/uploads/
-backend/DATASET STKI/
-*.pdf
-🤝 Kontribusi
-Pull request dipersilakan. Pastikan perubahan Anda terdokumentasi dengan baik.
-
-📄 Lisensi
-Proyek ini dibuat untuk keperluan penelitian dan pengembangan sistem deteksi kemiripan dokumen.
+```mermaid
+graph TB
+    Start([User]) --> Upload[Upload PDF]
+    Upload --> Store[(Store in uploads/)]
+    
+    Store --> Extract[Extract & Filter Text]
+    Extract --> PreProc[Preprocess Text<br/>- Tokenize<br/>- Stem<br/>- Remove Stopwords]
+    
+    PreProc --> Vector[Generate Combined Vector<br/>Word2Vec + BERT]
+    
+    Vector --> Compare{Compare with<br/>Database}
+    
+    DB[(Vector Database<br/>115 Documents)] -.-> Compare
+    
+    Compare --> Rank[Rank by<br/>Cosine Similarity]
+    Rank --> Filter[Filter > 75% threshold]
+    Filter --> TopDocs[Return Top Matches]
+    
+    TopDocs --> Detail{Request<br/>Details?}
+    
+    Detail -->|Yes| SentExtract[Extract Sentences<br/>Per Page]
+    SentExtract --> SentVec[Compute Sentence<br/>Vectors]
+    SentVec --> SentComp[Compare Sentences<br/>Cosine + Jaccard]
+    SentComp --> ConfScore[Calculate<br/>Confidence Score]
+    ConfScore --> MatchList[Return Matched<br/>Sentences with Pages]
+    
+    Detail -->|No| End([Display Results])
+    MatchList --> End
+    
+    Models[Models Layer<br/>- Word2Vec<br/>- BERT MiniLM<br/>- TF-IDF Weights] -.-> Vector
+    Models -.-> SentVec
+    
+    style Start fill:#e1f5ff
+    style End fill:#e1f5ff
+    style DB fill:#fff4e1
+    style Models fill:#f0e1ff
+    style Compare fill:#ffe1e1
+    style Detail fill:#ffe1e1
